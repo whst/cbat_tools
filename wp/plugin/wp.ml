@@ -208,6 +208,37 @@ let func_name_map = Cmd.parameter Typ.(list ~sep:';' (pair ~sep:',' string strin
            "<reg1_orig>,<reg1_mod>;<reg2_orig>,<reg2_mod>"). By default, WP
            assumes subroutines have the same names between the two binaries.|}
 
+let fun_specs = Cmd.parameter Typ.(list string) "fun-specs"
+    ~doc:{|List of built-in function summaries to be used at a function call
+           site in order of precedence. A target function will be mapped to a
+           function spec if it fulfills the spec's requirements. All function
+           specs set the target function as called and update the stack
+           pointer. On x86, the default spec will chaos all caller-saved
+           registers. On other architectures, the default spec will just set
+           the function as called. Available built-in specs:
+
+           `verifier-error': Trips calls to __assert_fail.
+
+           `verifier-assume': Adds an assumption to the precondition based on
+           the argument to the function call.
+
+           `verifier-nondet': Chaoses the output to the function call
+           representing an arbitrary pointer.
+
+           `afl-maybe-log': Chaoses the registers RAX, RCX, and RDX. Used for
+           calls to __afl_maybe_log.
+
+           `arg-terms': Uses BAP's uplifter to determine the input and output
+           registers to a function and chaoses the output registers.
+
+           `chaos-caller-saved': Chaoses the called-saved registers for x86
+           architectures.
+
+           `rax-out': Chaos RAX if it can be found on the left-hand side of an
+           assignment in the target function.
+
+           `chaos-rax': Chaos RAX regardless if it has been used on the
+           left-hand side of an assignment in the target function.|}
 
 let grammar = Cmd.(
     args
@@ -232,6 +263,7 @@ let grammar = Cmd.(
     $ stack_base
     $ stack_size
     $ func_name_map
+    $ fun_specs
     $ files)
 
 (* The callback run when the command is invoked from the command line. *)
@@ -257,6 +289,7 @@ let callback
     (stack_base : int option)
     (stack_size : int option)
     (func_name_map : (string * string) list)
+    (fun_specs : string list)
     (files : string list)
     (ctxt : ctxt) =
   let open Parameters.Err.Syntax in
@@ -281,7 +314,8 @@ let callback
       show = show;
       stack_base = stack_base;
       stack_size = stack_size;
-      func_name_map = func_name_map
+      func_name_map = func_name_map;
+      fun_specs = fun_specs
     })
   in
   Parameters.validate params files >>= fun () ->
