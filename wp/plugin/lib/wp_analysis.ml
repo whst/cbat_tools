@@ -97,17 +97,15 @@ let exp_conds_mod (p : Params.t) : Env.exp_cond list =
 (* Determine which function specs to use in WP. *)
 let fun_specs (p : Params.t) (to_inline : Sub.t Seq.t)
   : (Sub.t -> Arch.t -> Env.fun_spec option) list =
-  let default = [
-    Pre.spec_verifier_assume;
-    Pre.spec_verifier_nondet;
-    Pre.spec_chaos_caller_saved;
-    Pre.spec_empty
-  ] in
   let trip_asserts = if p.trip_asserts then [Pre.spec_verifier_error] else [] in
   let inline = [Pre.spec_inline to_inline] in
   let specs =
     if List.is_empty p.fun_specs then
-      default
+      (* The default function specs if none is specified from the user. *)
+      [ Pre.spec_verifier_assume;
+        Pre.spec_verifier_nondet;
+        Pre.spec_empty;
+        Pre.spec_chaos_caller_saved ]
     else
       List.map p.fun_specs ~f:Utils.spec_of_name
   in
